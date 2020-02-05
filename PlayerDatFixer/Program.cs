@@ -8,9 +8,11 @@ namespace PlayerDatFixer
 {
     class Program
     {
+        static readonly Version Version = new Version(0, 1, 0);
         static readonly List<string> SupportedVersions = new List<string> { "2.0.5" };
         static void Close()
         {
+            HorizontalLine();
             Console.WriteLine("Press any key to close...");
             Console.ReadKey();
         }
@@ -22,8 +24,17 @@ namespace PlayerDatFixer
         {
             Console.WriteLine("[INFO] " + message);
         }
+        static void HorizontalLine()
+        {
+            Console.WriteLine("================================================================");
+        }
         static void Main(string[] args)
         {
+            HorizontalLine();
+            Info($"VERSION: {Version}");
+            Info("Made by Sc2ad");
+            Info("Github repo: https://github.com/sc2ad/PlayerDataFixer");
+            HorizontalLine();
             if (args.Length == 0)
             {
                 Error("Please drag your PlayerData.dat file onto this application!");
