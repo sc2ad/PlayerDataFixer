@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace PlayerDatFixer
 {
@@ -162,19 +163,40 @@ namespace PlayerDatFixer
         private const int LevelIdHashLength = 40;
         // 13 is length of custom_level_ + 1
         private const int LevelIdStartSubstring = 13;
+        // 5 is length of Quest + 1
+        private const int QuestStartSubstring = 5;
+        private string GetTargetId(string levelId)
+        {
+            if (levelId.Length == LevelIdHashLength)
+            {
+                return "custom_level_" + levelId;
+            }
+            else if (levelId.StartsWith("custom_level_"))
+            {
+                // Remove any other extraneous characters, if they exist
+                return levelId.Substring(LevelIdStartSubstring, LevelIdHashLength);
+            }
+            else if (levelId.StartsWith("Quest"))
+            {
+                // Remove the Quest prefix
+                return GetTargetId(levelId.Substring(QuestStartSubstring, LevelIdHashLength));
+            }
+            else if (levelId.Length > LevelIdHashLength)
+            {
+                // Lets check to see if it has a HASH at the beginning, and random stuff after it
+                var targetId = levelId.Substring(0, LevelIdHashLength);
+                if (!Regex.IsMatch(targetId, @"^[a-fA-F0-9]+$"))
+                {
+                    return null;
+                }
+                return targetId;
+            }
+            return null;
+        }
         public Stats Copy()
         {
-            string targetId;
-            if (LevelId.Length == LevelIdHashLength)
-            {
-                targetId = "custom_level_" + LevelId;
-            }
-            else if (LevelId.StartsWith("custom_level_"))
-            {
-                targetId = LevelId.Substring(LevelIdStartSubstring);
-            }
-            // A little slow here, don't need to copy entire Stats object
-            else
+            string targetId = GetTargetId(LevelId);
+            if (targetId == null)
             {
                 return null;
             }

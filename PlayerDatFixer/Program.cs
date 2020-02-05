@@ -42,7 +42,7 @@ namespace PlayerDatFixer
                 return;
             }
             var playerDatLocation = args[0];
-            if (!File.Exists(playerDatLocation) && Path.GetFileName(playerDatLocation).Contains("PlayerData.dat"))
+            if (!File.Exists(playerDatLocation))
             {
                 Error("Please specify a 'PlayerData.dat' file that exists, or drag it onto this application!");
                 Close();
@@ -50,31 +50,56 @@ namespace PlayerDatFixer
             else
             {
                 Info("Reading PlayerData.dat...");
-                var text = File.ReadAllText(playerDatLocation);
-                Info("Creating backup...");
+                string text;
                 try
                 {
-                    File.WriteAllText(Path.Combine(Path.GetDirectoryName(playerDatLocation), "PlayerData_backup.dat"), text);
+                    text = File.ReadAllText(playerDatLocation);
                 }
                 catch (Exception e)
                 {
-                    Error($"Failed to create backup! {e}");
+                    Error($"Failed to read PlayerData.dat from location: {playerDatLocation}\n{e}");
+                    Close();
+                    return;
+                }
+                Info("Creating backup...");
+                try
+                {
+                    var backupLocation = Path.Combine(Path.GetDirectoryName(playerDatLocation), "PlayerData_backup.dat");
+                    if (playerDatLocation == backupLocation)
+                    {
+                        backupLocation = Path.Combine(Path.GetDirectoryName(playerDatLocation), "PlayerData_backup_2.dat");
+                    }
+                    File.WriteAllText(backupLocation, text);
+                }
+                catch (Exception e)
+                {
+                    Error($"Failed to create backup!\n{e}");
                     Close();
                     return;
                 }
                 Info("Parsing PlayerData.dat...");
+                Data data;
                 try
                 {
-                    var data = JsonConvert.DeserializeObject<Data>(text);
-                    if (!SupportedVersions.Contains(data.Version))
-                    {
-                        Error($"Invalid Version: {data.Version} is not supported!");
-                        Close();
-                        return;
-                    }
-                    Info("Copying data...");
-                    int copiedCount = 0;
-                    var allPlayers = new List<Player>(data.LocalPlayers.Union(data.GuestPlayers));
+                    data = JsonConvert.DeserializeObject<Data>(text);
+                }
+                catch (JsonException e)
+                {
+                    Error($"Error while deserializing PlayerData.dat!\n{e}");
+                    Close();
+                    return;
+                }
+                if (!SupportedVersions.Contains(data.Version))
+                {
+                    Error($"Invalid Version: {data.Version} is not supported!");
+                    Close();
+                    return;
+                }
+                Info("Copying data...");
+                int copiedCount = 0;
+                var allPlayers = new List<Player>(data.LocalPlayers.Union(data.GuestPlayers));
+                try
+                {
                     foreach (var p in allPlayers)
                     {
                         int statCount = p.LevelsStatsData.Count;
@@ -96,25 +121,37 @@ namespace PlayerDatFixer
                             }
                         }
                     }
-                    Info($"Successfully copied {copiedCount} stats for songs!");
-                    Info("Attempting to serialize data...");
-                    text = JsonConvert.SerializeObject(data);
-                    Info($"Attempting to write serialized data to PlayerData.dat file {playerDatLocation}...");
-                    File.WriteAllText(playerDatLocation, text);
-                    Info("Completed Succesfully!");
-                    Close();
-                }
-                catch (JsonException e)
-                {
-                    Error($"Error while parsing/serializing PlayerData.dat: {e}");
-                    Close();
                 }
                 catch (Exception e)
                 {
-                    Error($"An unknown exception has occurred! Please report this to Sc2ad#8836!");
-                    Error(e.ToString());
+                    Error($"An unknown exception has occurred! Please report this to Sc2ad#8836!\n{e}");
                     Close();
                 }
+                Info($"Successfully copied {copiedCount} stats for songs!");
+                Info("Attempting to serialize data...");
+                try
+                {
+                    text = JsonConvert.SerializeObject(data);
+                }
+                catch (JsonException e)
+                {
+                    Error($"Error while serializing PlayerData.dat!\n{e}");
+                    Close();
+                    return;
+                }
+                Info($"Attempting to write serialized data to PlayerData.dat file {playerDatLocation}...");
+                try
+                {
+                    File.WriteAllText(playerDatLocation, text);
+                }
+                catch (Exception e)
+                {
+                    Error($"Error while writing new PlayerData.dat to: {playerDatLocation}\n{e}");
+                    Close();
+                    return;
+                }
+                Info("Completed Succesfully!");
+                Close();
             }
         }
     }
