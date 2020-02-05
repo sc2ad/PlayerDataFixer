@@ -8,7 +8,7 @@ namespace PlayerDatFixer
 {
     class Program
     {
-        static readonly Version Version = new Version(0, 1, 0);
+        static readonly Version Version = new Version(0, 2, 0);
         static readonly List<string> SupportedVersions = new List<string> { "2.0.5" };
         static void Close()
         {
@@ -26,7 +26,7 @@ namespace PlayerDatFixer
         }
         static void HorizontalLine()
         {
-            Console.WriteLine("================================================================");
+            Console.WriteLine("==============================================================================");
         }
         static void Main(string[] args)
         {
@@ -68,6 +68,7 @@ namespace PlayerDatFixer
                     if (playerDatLocation == backupLocation)
                     {
                         backupLocation = Path.Combine(Path.GetDirectoryName(playerDatLocation), "PlayerData_backup_2.dat");
+                        Info($"Remapping backup to: {backupLocation}");
                     }
                     File.WriteAllText(backupLocation, text);
                 }
@@ -105,18 +106,19 @@ namespace PlayerDatFixer
                         int statCount = p.LevelsStatsData.Count;
                         for (int i = 0; i < statCount; i++)
                         {
-                            var clone = p.LevelsStatsData[i].Copy();
-                            if (clone != null)
+                            var clones = p.LevelsStatsData[i].Copy();
+                            foreach (var s in clones)
                             {
                                 // Ensure the clone doesn't already exist within the LevelsStatsData
-                                // Big slowdown here
-                                if (p.LevelsStatsData.FirstOrDefault((s) =>
-                                {
-                                    return clone.LevelId == s.LevelId && clone.Difficulty == s.Difficulty && clone.BeatmapCharacteristicName == s.BeatmapCharacteristicName;
-                                }) == null)
+                                if (!p.LevelsStatsData.Contains(s))
                                 {
                                     copiedCount++;
-                                    p.LevelsStatsData.Add(clone);
+                                    p.LevelsStatsData.Add(s);
+                                } else
+                                {
+#if DEBUG
+                                    Info($"Already contains: {s}");
+#endif
                                 }
                             }
                         }

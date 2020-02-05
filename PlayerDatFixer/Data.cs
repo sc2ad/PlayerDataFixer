@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -138,7 +139,7 @@ namespace PlayerDatFixer
         [JsonProperty("cummulativeCutScoreWithoutMultiplier")]
         public int CummulativeCutScoreWithoutMultiplier { get; set; }
     }
-    internal sealed class Stats
+    internal sealed class Stats : IEquatable<Stats>
     {
         [JsonProperty("levelId")]
         public string LevelId { get; set; }
@@ -165,44 +166,60 @@ namespace PlayerDatFixer
         private const int LevelIdStartSubstring = 13;
         // 5 is length of Quest + 1
         private const int QuestStartSubstring = 5;
-        private string GetTargetId(string levelId)
+        private IEnumerable<string> GetTargetIds(string levelId)
         {
+            var lst = new HashSet<string>();
             if (levelId.Length == LevelIdHashLength)
             {
-                return "custom_level_" + levelId;
+                if (Regex.IsMatch(levelId, @"^[a-fA-F0-9]+$"))
+                {
+                    lst.Add("custom_level_" + levelId);
+                }
             }
-            else if (levelId.StartsWith("custom_level_"))
+            if (levelId.StartsWith("custom_level_"))
             {
                 // Remove any other extraneous characters, if they exist
-                return levelId.Substring(LevelIdStartSubstring, LevelIdHashLength);
+                var temp = levelId.Substring(LevelIdStartSubstring, LevelIdHashLength);
+                if (Regex.IsMatch(temp, @"^[a-fA-F0-9]+$"))
+                {
+                    lst.Add(temp);
+                }
             }
-            else if (levelId.StartsWith("Quest"))
+            if (levelId.StartsWith("Quest"))
             {
                 // Remove the Quest prefix
-                return GetTargetId(levelId.Substring(QuestStartSubstring, LevelIdHashLength));
-            }
-            else if (levelId.Length > LevelIdHashLength)
-            {
-                // Lets check to see if it has a HASH at the beginning, and random stuff after it
-                var targetId = levelId.Substring(0, LevelIdHashLength);
-                if (!Regex.IsMatch(targetId, @"^[a-fA-F0-9]+$"))
+                var temp = levelId.Substring(QuestStartSubstring, LevelIdHashLength);
+                if (Regex.IsMatch(temp, @"^[a-fA-F0-9]+$"))
                 {
-                    return null;
+                    lst.Add(temp);
+                    lst.Add("custom_level_" + temp);
                 }
-                return targetId;
             }
-            return null;
-        }
-        public Stats Copy()
-        {
-            string targetId = GetTargetId(LevelId);
-            if (targetId == null)
+            if (levelId.Length > LevelIdHashLength)
             {
-                return null;
+                // Lets check to see if it has a HASH at the beginning, and an underscore after it
+                var temp = levelId.Substring(0, LevelIdHashLength);
+                if (Regex.IsMatch(temp, @"^[a-fA-F0-9]+$"))
+                {
+                    lst.Add(temp);
+                    lst.Add("custom_level_" + temp);
+                }
             }
+#if DEBUG
+            Console.WriteLine($"Getting IDs for: {levelId}");
+            Console.WriteLine("Adding Items:");
+            foreach (var item in lst)
+            {
+                Console.WriteLine(item);
+            }
+#endif
+            return lst;
+        }
+        private Stats CopySingle(string newId)
+        {
             return new Stats
             {
-                LevelId = targetId,
+                LevelId = newId,
                 Difficulty = Difficulty,
                 BeatmapCharacteristicName = BeatmapCharacteristicName,
                 HighScore = HighScore,
@@ -212,6 +229,35 @@ namespace PlayerDatFixer
                 ValidScore = ValidScore,
                 PlayCount = PlayCount
             };
+        }
+        public IEnumerable<Stats> Copy()
+        {
+            var statsCollection = new List<Stats>();
+            var targets = GetTargetIds(LevelId);
+            foreach (var t in targets)
+            {
+                statsCollection.Add(CopySingle(t));
+            }
+            return statsCollection;
+        }
+
+        public bool Equals([AllowNull] Stats other)
+        {
+            return other.LevelId == LevelId && other.Difficulty == Difficulty && other.BeatmapCharacteristicName == BeatmapCharacteristicName;
+        }
+        public override bool Equals(object obj)
+        {
+            if (obj is Stats)
+                return Equals(obj as Stats);
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return (LevelId, Difficulty, BeatmapCharacteristicName).GetHashCode();
+        }
+        public override string ToString()
+        {
+            return $"{LevelId}: {BeatmapCharacteristicName}_{Difficulty}: {HighScore}";
         }
     }
     internal sealed class MissionStats
