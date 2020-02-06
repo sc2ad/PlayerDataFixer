@@ -8,7 +8,7 @@ namespace PlayerDatFixer
 {
     class Program
     {
-        static readonly Version Version = new Version(0, 2, 0);
+        static readonly Version Version = new Version(0, 2, 1);
         static readonly List<string> SupportedVersions = new List<string> { "2.0.5" };
         static void Close()
         {
@@ -98,10 +98,9 @@ namespace PlayerDatFixer
                 }
                 Info("Copying data...");
                 int copiedCount = 0;
-                var allPlayers = new List<Player>(data.LocalPlayers.Union(data.GuestPlayers));
                 try
                 {
-                    foreach (var p in allPlayers)
+                    foreach (var p in data.LocalPlayers)
                     {
                         int statCount = p.LevelsStatsData.Count;
                         for (int i = 0; i < statCount; i++)
@@ -128,8 +127,44 @@ namespace PlayerDatFixer
                 {
                     Error($"An unknown exception has occurred! Please report this to Sc2ad#8836!\n{e}");
                     Close();
+                    return;
                 }
                 Info($"Successfully copied {copiedCount} stats for songs!");
+                Info("Attempting to copy favorite songs...");
+                copiedCount = 0;
+                try
+                {
+                    foreach (var p in data.LocalPlayers)
+                    {
+                        int statCount = p.FavoriteLevelIds.Count;
+                        for (int i = 0; i < statCount; i++)
+                        {
+                            var clones = Utils.GetTargetIds(p.FavoriteLevelIds[i]);
+                            foreach (var s in clones)
+                            {
+                                // Ensure the clone doesn't already exist within the LevelsStatsData
+                                if (!p.FavoriteLevelIds.Contains(s))
+                                {
+                                    copiedCount++;
+                                    p.FavoriteLevelIds.Add(s);
+                                }
+                                else
+                                {
+#if DEBUG
+                                    Info($"Already contains: {s}");
+#endif
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Error($"An unknown exception has occurred! Please report this to Sc2ad#8836!\n{e}");
+                    Close();
+                    return;
+                }
+                Info($"Successfully copied {copiedCount} favorite songs!");
                 Info("Attempting to serialize data...");
                 try
                 {
