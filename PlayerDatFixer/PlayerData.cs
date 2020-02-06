@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace PlayerDatFixer
 {
-    internal sealed class Data
+    internal sealed class PlayerData
     {
         [JsonProperty("version")]
         public string Version { get; set; }
