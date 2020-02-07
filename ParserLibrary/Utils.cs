@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace PlayerDatFixer
+namespace ParserLibrary
 {
-    internal static class Utils
+    public static class Utils
     {
         // Assume LevelId length must be 40 for an unconverted hash (without custom_level_ prefixed to it)
         private const int LevelIdHashLength = 40;

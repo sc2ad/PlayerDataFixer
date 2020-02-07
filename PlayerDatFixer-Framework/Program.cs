@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json;
-using ParserLibrary;
+﻿using ParserLibrary;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace PlayerDatFixer
+namespace PlayerDatFixer_Framework
 {
     class Program
     {
@@ -28,7 +28,7 @@ namespace PlayerDatFixer
         {
             Console.WriteLine("==============================================================================");
         }
-        
+
         static void Main(string[] args)
         {
             HorizontalLine();

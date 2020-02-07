@@ -5,9 +5,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace PlayerDatFixer
+namespace ParserLibrary
 {
-    internal sealed class PlayerData
+    public sealed class PlayerDataCopyStats : CopyStats
+    {
+        public int CopiedSongsCount { get; internal set; }
+        public int CopiedFavoritesCount { get; internal set; }
+        public void DisplayStats(Action<string> logCall)
+        {
+            logCall($"Copied {CopiedSongsCount} songs!");
+            logCall($"Copied {CopiedFavoritesCount} favorites!");
+        }
+    }
+    public sealed class PlayerData : Copyable
     {
         [JsonProperty("version")]
         public string Version { get; set; }
@@ -15,13 +25,62 @@ namespace PlayerDatFixer
         public List<Player> LocalPlayers { get; set; }
         [JsonProperty("guestPlayers")]
         public List<GuestPlayer> GuestPlayers { get; set; }
+        public static string FileName { get => "PlayerData"; }
+        public CopyStats CopyData()
+        {
+            var copyStats = new PlayerDataCopyStats();
+            foreach (var p in LocalPlayers)
+            {
+                int statCount = p.LevelsStatsData.Count;
+                for (int i = 0; i < statCount; i++)
+                {
+                    var clones = p.LevelsStatsData[i].Copy();
+                    foreach (var s in clones)
+                    {
+                        // Ensure the clone doesn't already exist within the LevelsStatsData
+                        if (!p.LevelsStatsData.Contains(s))
+                        {
+                            copyStats.CopiedSongsCount++;
+                            p.LevelsStatsData.Add(s);
+                        }
+                        else
+                        {
+#if DEBUG
+                            Console.WriteLine($"Already contains song: {s}");
+#endif
+                        }
+                    }
+                }
+                int favoritesCount = p.FavoriteLevelIds.Count;
+                for (int i = 0; i < favoritesCount; i++)
+                {
+                    var clones = Utils.GetTargetIds(p.FavoriteLevelIds[i]);
+                    foreach (var s in clones)
+                    {
+                        // Ensure the clone doesn't already exist within the FavoriteLevelIds
+                        if (!p.FavoriteLevelIds.Contains(s))
+                        {
+                            copyStats.CopiedFavoritesCount++;
+                            p.FavoriteLevelIds.Add(s);
+                        }
+                        else
+                        {
+#if DEBUG
+                            Console.WriteLine($"Already contains favorite: {s}");
+#endif
+                        }
+                    }
+                }
+            }
+            return copyStats;
+        }
     }
-    internal sealed class GuestPlayer
+    public sealed class GuestPlayer
     {
         [JsonProperty("playerName")]
         public string PlayerName { get; set; }
     }
-    internal sealed class Player
+    public sealed class Player
     {
         [JsonProperty("playerId")]
         public string PlayerId { get; set; }
@@ -58,7 +117,7 @@ namespace PlayerDatFixer
         [JsonProperty("favoritesLevelIds")]
         public List<string> FavoriteLevelIds { get; set; }
     }
-    internal sealed class GameplayModifiers
+    public sealed class GameplayModifiers
     {
         [JsonProperty("energyType")]
         public int EnergyType { get; set; }
@@ -83,7 +142,7 @@ namespace PlayerDatFixer
         [JsonProperty("songSpeed")]
         public int SongSpeed { get; set; }
     }
-    internal sealed class PlayerSpecificSettings
+    public sealed class PlayerSpecificSettings
     {
         [JsonProperty("staticLights")]
         public bool StaticLights { get; set; }
@@ -102,14 +161,14 @@ namespace PlayerDatFixer
         [JsonProperty("advancedHud")]
         public bool AdvancedHud { get; set; }
     }
-    internal sealed class PracticeSettings
+    public sealed class PracticeSettings
     {
         [JsonProperty("startSongTime")]
         public double StartSongTime { get; set; }
         [JsonProperty("songSpeedMul")]
         public double SongSpeedMul { get; set; }
     }
-    internal sealed class PlayerAllOverallStatsData
+    public sealed class PlayerAllOverallStatsData
     {
         [JsonProperty("campaignOverallStatsData")]
         public OverallStatsData CampaignOverallStatsData { get; set; }
@@ -118,7 +177,7 @@ namespace PlayerDatFixer
         [JsonProperty("partyFreePlayOverallStatsData")]
         public OverallStatsData PartyFreePlayOverallStatsData { get; set; }
     }
-    internal sealed class OverallStatsData
+    public sealed class OverallStatsData
     {
         [JsonProperty("goodCutsCount")]
         public int GoodCutsCount { get; set; }
@@ -144,7 +203,7 @@ namespace PlayerDatFixer
         [JsonProperty("cummulativeCutScoreWithoutMultiplier")]
         public int CummulativeCutScoreWithoutMultiplier { get; set; }
     }
-    internal sealed class Stats : IEquatable<Stats>
+    public sealed class Stats : IEquatable<Stats>
     {
         [JsonProperty("levelId")]
         public string LevelId { get; set; }
@@ -190,7 +249,7 @@ namespace PlayerDatFixer
             return statsCollection;
         }
 
-        public bool Equals([AllowNull] Stats other)
+        public bool Equals(Stats other)
         {
             return other.LevelId == LevelId && other.Difficulty == Difficulty && other.BeatmapCharacteristicName == BeatmapCharacteristicName;
         }
@@ -209,14 +268,14 @@ namespace PlayerDatFixer
             return $"{LevelId}: {BeatmapCharacteristicName}_{Difficulty}: {HighScore}";
         }
     }
-    internal sealed class MissionStats
+    public sealed class MissionStats
     {
         [JsonProperty("missionId")]
         public string MissionId { get; set; }
         [JsonProperty("cleared")]
         public bool Cleared { get; set; }
     }
-    internal sealed class ColorSchemeSettings
+    public sealed class ColorSchemeSettings
     {
         [JsonProperty("overrideDefaultColors")]
         public bool OverrideDefaultColors { get; set; }
@@ -225,7 +284,7 @@ namespace PlayerDatFixer
         [JsonProperty("colorSchemes")]
         public List<ColorScheme> ColorSchemes { get; set; }
     }
-    internal sealed class ColorScheme
+    public sealed class ColorScheme
     {
         [JsonProperty("colorSchemeId")]
         public string ColorSchemeId { get; set; }
@@ -240,7 +299,7 @@ namespace PlayerDatFixer
         [JsonProperty("obstaclesColor")]
         public Color ObstaclesColor { get; set; }
     }
-    internal sealed class Color
+    public sealed class Color
     {
         [JsonProperty("r")]
         public double R { get; set; }
@@ -251,7 +310,7 @@ namespace PlayerDatFixer
         [JsonProperty("a")]
         public double A { get; set; }
     }
-    internal sealed class OverrideEnvironmentSettings
+    public sealed class OverrideEnvironmentSettings
     {
         [JsonProperty("overrideEnvironments")]
         public bool OverrideEnvironments { get; set; }

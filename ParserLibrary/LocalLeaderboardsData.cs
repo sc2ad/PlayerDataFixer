@@ -4,14 +4,47 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace PlayerDatFixer
+namespace ParserLibrary
 {
-    internal sealed class LocalLeaderboardsData
+    public sealed class LocalLeaderboardsCopyStats : CopyStats
+    {
+        public int CopiedLeaderboards { get; internal set; }
+        public void DisplayStats(Action<string> logCall)
+        {
+            logCall($"Copied: {CopiedLeaderboards} leaderboards!");
+        }
+    }
+    public sealed class LocalLeaderboardsData : Copyable
     {
         [JsonProperty("_leaderboardsData")]
         public List<LeaderboardData> LeaderboardsData { get; set; }
+        public static string FileName { get => "LocalLeaderboards"; }
+        public CopyStats CopyData()
+        {
+            var copyStats = new LocalLeaderboardsCopyStats();
+            int statCount = LeaderboardsData.Count;
+            for (int i = 0; i < statCount; i++)
+            {
+                var clones = LeaderboardsData[i].Copy();
+                foreach (var s in clones)
+                {
+                    if (!LeaderboardsData.Contains(s))
+                    {
+                        copyStats.CopiedLeaderboards++;
+                        LeaderboardsData.Add(s);
+                    }
+                    else
+                    {
+#if DEBUG
+                        Console.WriteLine($"Already contains leaderboard: {s}");
+#endif
+                    }
+                }
+            }
+            return copyStats;
+        }
     }
-    internal sealed class LeaderboardData : IEquatable<LeaderboardData>
+    public sealed class LeaderboardData : IEquatable<LeaderboardData>
     {
         [JsonProperty("_leaderboardId")]
         public string LeaderboardId { get; set; }
@@ -40,7 +73,7 @@ namespace PlayerDatFixer
             return data;
         }
 
-        public bool Equals([AllowNull] LeaderboardData other)
+        public bool Equals(LeaderboardData other)
         {
             return other.LeaderboardId == LeaderboardId;
         }
@@ -59,7 +92,7 @@ namespace PlayerDatFixer
             return LeaderboardId;
         }
     }
-    internal sealed class ScoreData
+    public sealed class ScoreData
     {
         [JsonProperty("_score")]
         public int Score { get; set; }
@@ -69,7 +102,7 @@ namespace PlayerDatFixer
         public bool FullCombo { get; set; }
         [JsonProperty("_timestamp")]
         public int Timestamp { get; set; }
-        internal ScoreData Copy()
+        public ScoreData Copy()
         {
             return new ScoreData
             {
